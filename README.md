@@ -75,6 +75,14 @@ Disables or drastically shortens most animations and transitions while Quietgram
 
 This can make Instagram Direct feel visually quieter and less attention-demanding.
 
+### Hide contacts sidebar
+
+Temporarily hides the conversation list while you're inside Instagram Direct.
+
+With fewer names, avatars, unread conversations, and other competing cues on screen, you can focus on the conversation you currently have open instead of being reminded of everything else waiting for your attention.
+
+The sidebar can be shown again at any time, so your conversations remain easily accessible when you need them.
+
 ## Settings
 
 Every feature can be enabled or disabled independently through the Tampermonkey menu.
@@ -87,6 +95,7 @@ Available options:
 * Hide activity status
 * Hide typing indicators
 * Reduce interface motion
+* Hide contacts sidebar
 
 Your preferences are stored locally using Tampermonkey's userscript storage.
 

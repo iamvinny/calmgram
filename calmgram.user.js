@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Instagram Calm Messages
 // @namespace    local.instagram.calm
-// @version      1.2.0
+// @version      1.3.3
 // @description  Neutral avatars and fewer social cues in Instagram Direct and floating chats.
 // @match        https://www.instagram.com/*
 // @run-at       document-start
@@ -25,6 +25,7 @@
     activity: true,
     typing: true,
     motion: true,
+    sidebar: false,
   };
   const saved = GM_getValue('calm-settings', {});
   const settings = { ...DEFAULTS };
@@ -35,6 +36,10 @@
   const HIDE = 'data-ig-calm-hide';
   const AVATAR = 'data-ig-calm-avatar';
   const MOTION = 'data-ig-calm-motion';
+  const SIDEBAR = 'data-ig-calm-sidebar-hidden';
+  const SIDEBAR_SELECTOR = '[role="navigation"][aria-label="Thread list"]';
+  let sidebarButton;
+  let sidebarRail;
   const marked = new Set();
   const motionRoots = new Set();
   let frame = 0;
@@ -79,6 +84,38 @@
   const avatarURL = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   const style = document.createElement('style');
   style.textContent = `
+    html[${SIDEBAR}] ${SIDEBAR_SELECTOR} { display: none !important; }
+    [data-ig-calm-sidebar-rail] {
+      display: flex !important;
+      flex: 0 0 56px !important;
+      width: 56px !important;
+      min-width: 56px !important;
+      box-sizing: border-box !important;
+      align-self: stretch !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      padding: 12px 7px !important;
+      border-inline-end: 1px solid #89939b40 !important;
+    }
+    [data-ig-calm-sidebar-rail][hidden] { display: none !important; }
+    button[data-ig-calm-sidebar-toggle] {
+      position: static !important;
+      flex: 0 0 40px !important;
+      width: 40px !important;
+      height: 40px !important;
+      padding: 0 !important;
+      border: 1px solid #b7bfc6 !important;
+      border-radius: 12px !important;
+      background: #f4f6f7 !important;
+      color: #27333c !important;
+      font: 500 28px/1 system-ui, sans-serif !important;
+      cursor: pointer !important;
+    }
+    button[data-ig-calm-sidebar-toggle][hidden] { display: none !important; }
+    button[data-ig-calm-sidebar-toggle]:focus-visible {
+      outline: 3px solid #527ca3 !important;
+      outline-offset: 3px !important;
+    }
     html[${ROOT}] [${HIDE}] { display: none !important; }
     html[${ROOT}] img[${AVATAR}] {
       object-position: -10000px -10000px !important;
@@ -104,12 +141,52 @@
     marked.add(element);
   }
 
+  function toggleSetting(key) {
+    settings[key] = !settings[key];
+    GM_setValue('calm-settings', settings);
+    menus();
+    schedule();
+  }
+
+  function updateSidebar(isDirect) {
+    const sidebar = document.querySelector(SIDEBAR_SELECTOR);
+    const available = settings.enabled && isDirect && !!sidebar?.parentElement;
+    document.documentElement.toggleAttribute(SIDEBAR, available && settings.sidebar);
+    if (!sidebarButton && available && document.body) {
+      sidebarRail = document.createElement('div');
+      sidebarRail.setAttribute('data-ig-calm-sidebar-rail', '');
+      sidebarButton = document.createElement('button');
+      sidebarButton.type = 'button';
+      sidebarButton.setAttribute('data-ig-calm-sidebar-toggle', '');
+      sidebarButton.addEventListener('click', () => toggleSetting('sidebar'));
+      sidebarRail.append(sidebarButton);
+    }
+    if (!sidebarButton) return;
+    // A real flex sibling reserves space; never overlay the conversation.
+    // Reinsert only if React replaces/reorders the sidebar.
+    if (available && (sidebarRail.parentElement !== sidebar.parentElement || sidebarRail.nextSibling !== sidebar)) {
+      sidebar.parentElement.insertBefore(sidebarRail, sidebar);
+    }
+    sidebarRail.hidden = !available;
+    sidebarButton.hidden = !available;
+    const label = settings.sidebar ? 'Show contacts' : 'Hide contacts';
+    // Only change text when needed: text mutations trigger our DOM observer.
+    const icon = settings.sidebar ? '›' : '‹';
+    if (sidebarButton.textContent !== icon) sidebarButton.textContent = icon;
+    sidebarButton.title = label;
+    sidebarButton.setAttribute('aria-expanded', String(!settings.sidebar));
+    if (sidebarButton.getAttribute('aria-label') !== label + ' sidebar') {
+      sidebarButton.setAttribute('aria-label', label + ' sidebar');
+    }
+  }
+
   function scan() {
     frame = 0;
     const root = document.documentElement;
     if (!root) return;
     if (!style.isConnected) root.append(style);
     const isDirect = /^\/direct(?:\/|$)/.test(location.pathname);
+    updateSidebar(isDirect);
     const scopes = settings.enabled ? (isDirect ? [root] : floatingChats()) : [];
     root.toggleAttribute(ROOT, scopes.length > 0);
     for (const previous of motionRoots) previous.removeAttribute(MOTION);
@@ -170,14 +247,10 @@
       enabled: 'Calm mode', avatars: 'Neutral profile photos',
       receipts: 'Hide seen indicators', activity: 'Hide activity status',
       typing: 'Hide typing indicators', motion: 'Reduce interface motion',
+      sidebar: 'Hide contacts sidebar',
     };
     menuIds = Object.entries(labels).map(([key, label]) =>
-      GM_registerMenuCommand(`${settings[key] ? '✓' : '○'} ${label}`, () => {
-        settings[key] = !settings[key];
-        GM_setValue('calm-settings', settings);
-        menus();
-        schedule();
-      })
+      GM_registerMenuCommand(`${settings[key] ? '✓' : '○'} ${label}`, () => toggleSetting(key))
     );
   }
 
@@ -200,4 +273,3 @@
   menus();
   schedule();
 })();
-
