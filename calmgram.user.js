@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Instagram Calm Messages
 // @namespace    local.instagram.calm
-// @version      1.3.3
+// @version      1.3.5
 // @description  Neutral avatars and fewer social cues in Instagram Direct and floating chats.
 // @match        https://www.instagram.com/*
 // @run-at       document-start
@@ -80,8 +80,9 @@
     return [...panels];
   }
 
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#e3e6e8"/><circle cx="32" cy="24" r="11" fill="#89939b"/><path d="M12 58c0-14 8-22 20-22s20 8 20 22" fill="#89939b"/></svg>';
-  const avatarURL = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  // Exact default-avatar JPEG supplied by the user; embedded to avoid CDN expiry.
+  const avatarBase64 = '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';
+  const avatarURL = `url("data:image/jpeg;base64,${avatarBase64}")`;
   const style = document.createElement('style');
   style.textContent = `
     html[${SIDEBAR}] ${SIDEBAR_SELECTOR} { display: none !important; }
