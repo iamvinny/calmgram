@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Instagram Calm Messages
 // @namespace    local.instagram.calm
-// @version      1.3.6
-// @description  Neutral avatars and fewer social cues in Instagram Direct and floating chats.
+// @version      1.3.7
+// @description  Neutral avatars and fewer social cues in Instagram Direct, floating chats, and the stories tray.
 // @match        https://www.instagram.com/*
 // @run-at       document-start
 // @grant        GM_getValue
@@ -38,6 +38,7 @@
   const MOTION = 'data-ig-calm-motion';
   const SIDEBAR = 'data-ig-calm-sidebar-hidden';
   const SIDEBAR_SELECTOR = '[role="navigation"][aria-label="Thread list"]';
+  const STORY_TRAY_SELECTOR = '[data-pagelet="story_tray"]';
   let sidebarButton;
   let sidebarRail;
   const marked = new Set();
@@ -200,7 +201,10 @@
     const isDirect = /^\/direct(?:\/|$)/.test(location.pathname);
     updateSidebar(isDirect);
     const scopes = settings.enabled ? (isDirect ? [root] : floatingChats()) : [];
-    root.toggleAttribute(ROOT, scopes.length > 0);
+    // The stories tray sits outside Direct and the floating chats. Only its
+    // avatars are neutralized: no motion changes and no text matching there.
+    const trays = settings.enabled && settings.avatars && !isDirect ? [...document.querySelectorAll(STORY_TRAY_SELECTOR)] : [];
+    root.toggleAttribute(ROOT, scopes.length > 0 || trays.length > 0);
     for (const previous of motionRoots) previous.removeAttribute(MOTION);
     motionRoots.clear();
     if (settings.motion) {
@@ -217,6 +221,11 @@
       element.removeAttribute(AVATAR);
     }
     marked.clear();
+    for (const tray of trays) {
+      for (const img of tray.querySelectorAll('img')) {
+        if (isAvatar(img)) mark(img, AVATAR);
+      }
+    }
     if (!scopes.length) return;
     const scopedElements = selector => new Set(scopes.flatMap(scope => [...scope.querySelectorAll(selector)]));
 

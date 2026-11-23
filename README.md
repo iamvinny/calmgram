@@ -33,7 +33,7 @@ Quietgram currently supports:
 
 ### Neutral profile photos
 
-Replaces profile pictures in Instagram Direct with a generic neutral avatar.
+Replaces profile pictures in Instagram Direct, the floating chats, and the stories tray on the home feed with a generic neutral avatar.
 
 This can make conversations feel less visually personal or attention-grabbing while still preserving the structure of the interface.
 
@@ -205,6 +205,7 @@ When testing changes, useful cases include:
 * Group conversations
 * Seen indicators with and without timestamps
 * Avatar-based seen indicators
+* Stories tray on the home feed
 * Activity status
 * Typing indicators
 * React navigation between conversations
