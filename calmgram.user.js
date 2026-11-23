@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Instagram Calm Messages
 // @namespace    local.instagram.calm
-// @version      1.3.5
+// @version      1.3.6
 // @description  Neutral avatars and fewer social cues in Instagram Direct and floating chats.
 // @match        https://www.instagram.com/*
 // @run-at       document-start
@@ -55,11 +55,22 @@
   // Exclude message contents explicitly, even when their text is just "Seen".
   const protectedArea = 'article,[role="article"],[contenteditable]:not([contenteditable="false"]),textarea,input,[role="textbox"],button,[role="button"],a,pre,code';
 
+  // Profile pictures are served from dedicated CDN paths: Instagram's
+  // t51.*-19 and Facebook's t1.*-1 (cross-app contacts, default silhouette).
+  // Posts and shared media use other suffixes, so they are left alone.
+  const avatarSource = value => /^https:\/\/[^/]+\.(?:cdninstagram\.com|fbcdn\.net)\/v\/t(?:51\.\d+-19|1\.\d+-1)\//i.test(value || '');
+
   function isAvatar(img) {
     const label = normalize(`${img.alt || ''} ${img.getAttribute('aria-label') || ''}`);
     if (avatarLabel(label) || /^User avatar$/i.test(normalize(img.alt))) return true;
-    // The user's own Notes avatar has an empty alt in the inspected layout.
-    return !label && !!img.closest('[role="navigation"][aria-label="Thread list"] ul [role="link"]');
+    if (label) return false;
+    // Inbox rows now render avatars as decorative images: empty alt and
+    // aria-hidden, with no "profile picture" label left to match.
+    if (avatarSource(img.currentSrc || img.getAttribute('src'))) return true;
+    // Structural fallbacks in case the CDN paths change: the user's own Notes
+    // avatar, and decorative images inside a thread row.
+    if (img.closest(`${SIDEBAR_SELECTOR} ul [role="link"]`)) return true;
+    return img.getAttribute('aria-hidden') === 'true' && !!img.closest(`${SIDEBAR_SELECTOR} [role="button"]`);
   }
 
   function floatingChats() {
